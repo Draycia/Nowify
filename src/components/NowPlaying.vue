@@ -2,6 +2,9 @@
   <div id="app">
     <div
       v-if="player.playing"
+      v-touch:swipe.left="swipeLeft"
+      v-touch:swipe.right="swipeRight"
+      v-touch-options="{swipeTolerance: 80, touchHoldTolerance: 300}"
       class="now-playing"
       :class="getNowPlayingClass()"
     >
@@ -15,6 +18,16 @@
       <div class="now-playing__details">
         <h1 class="now-playing__track" v-text="player.trackTitle"></h1>
         <h2 class="now-playing__artists" v-text="getTrackArtists"></h2>
+        <!-- <h3 style="clear: both;">
+          <h3 class="now-playing__progress" v-text="msToDuration(playerResponse.progress_ms)"></h3>
+          <h3 class="now-playing__seperator"> - </h3>
+          <h3 class="now-playing__duration" v-text="msToDuration(playerResponse.item.duration_ms)"></h3>
+        </h3> -->
+        <div class="now-playing__display">
+          <div class="now-playing__progress" v-text="msToDuration(playerResponse.progress_ms)"></div>
+          <b-progress v-if="playerResponse.progress_ms" height="1rem" style="border-radius: 0" class="now-playing__progressbar" :variant="bars[0].variant" :value="playerResponse.progress_ms" :max="playerResponse.item.duration_ms"></b-progress>
+          <div class="now-playing__duration" v-text="msToDuration(playerResponse.item.duration_ms)"></div>
+        </div>
       </div>
     </div>
     <div v-else class="now-playing" :class="getNowPlayingClass()">
@@ -39,11 +52,23 @@ export default {
 
   data() {
     return {
+      bars: [
+        { variant: 'success', value: 75 },
+        { variant: 'info', value: 75 },
+        { variant: 'warning', value: 75 },
+        { variant: 'danger', value: 75 },
+        { variant: 'primary', value: 75 },
+        { variant: 'secondary', value: 75 },
+        { variant: 'dark', value: 75 }
+      ],
       pollPlaying: '',
       playerResponse: {},
-      playerData: this.getEmptyPlayer(),
+      playerData: this.getRecentlyPlayed(),
+      recentlyPlayed: {},
+      hasRecentlyPlayed: false,
       colourPalette: '',
-      swatches: []
+      swatches: [],
+      timer: ''
     }
   },
 
@@ -63,6 +88,10 @@ export default {
 
   beforeDestroy() {
     clearInterval(this.pollPlaying)
+  },
+
+  created() {
+    setInterval(this.updateProgress, 25)
   },
 
   methods: {
@@ -95,7 +124,7 @@ export default {
          * The connection was successful but there's no content to return.
          */
         if (response.status === 204) {
-          data = this.getEmptyPlayer()
+          data = this.getRecentlyPlayed()
           this.playerData = data
 
           this.$nextTick(() => {
@@ -110,13 +139,41 @@ export default {
       } catch (error) {
         this.handleExpiredToken()
 
-        data = this.getEmptyPlayer()
+        data = this.getRecentlyPlayed()
         this.playerData = data
 
         this.$nextTick(() => {
           this.$emit('spotifyTrackUpdated', data)
         })
       }
+    },
+
+    async swipeLeft() {
+      await fetch(
+        "https://api.spotify.com/v1/me/player/next",
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${this.auth.accessToken}`
+          }
+        }
+      )
+
+      this.getNowPlaying()
+    },
+
+    async swipeRight() {
+      await fetch(
+        "https://api.spotify.com/v1/me/player/previous",
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${this.auth.accessToken}`
+          }
+        }
+      )
+
+      this.getNowPlaying()
     },
 
     /**
@@ -143,7 +200,7 @@ export default {
        * Run node-vibrant to get colours.
        */
       Vibrant.from(this.player.trackAlbum.image)
-        .quality(1)
+        .quality(2)
         .clearFilters()
         .getPalette()
         .then(palette => {
@@ -151,17 +208,33 @@ export default {
         })
     },
 
-    /**
-     * Return a formatted empty object for an idle player.
-     * @return {Object}
-     */
-    getEmptyPlayer() {
+    async getRecentlyPlayed() {
+      const response = await fetch(
+        "https://api.spotify.com/v1/me/player/recently-played?limit=1",
+        {
+          headers: {
+            Authorization: `Bearer ${this.auth.accessToken}`
+          }
+        }
+      )
+
+      if (!response.ok) {
+        throw new Error(`An error has occured: ${response.status}`)
+      }
+
+      //window.alert(JSON.stringify((await response.json()).items[0].track.album.images[0].url))
+
+      const track = (await response.json()).items[0].track
+
       return {
         playing: false,
-        trackAlbum: {},
-        trackArtists: [],
-        trackId: '',
-        trackTitle: ''
+        trackArtists: track.artists.map(artist => artist.name),
+        trackId: track.id,
+        trackAlbum: {
+          title: track.album.name,
+          image: track.album.images[0].url
+        },
+        trackTitle: track.name
       }
     },
 
@@ -208,7 +281,7 @@ export default {
        * Player is active, but user has paused.
        */
       if (this.playerResponse.is_playing === false) {
-        this.playerData = this.getEmptyPlayer()
+        this.playerData = this.getRecentlyPlayed()
 
         return
       }
@@ -235,6 +308,37 @@ export default {
           title: this.playerResponse.item.album.name,
           image: this.playerResponse.item.album.images[0].url
         }
+      }
+    },
+
+    /**
+     * Convert milliseconds to a duration string.
+     */
+    msToDuration(duration) {
+      var seconds = Math.floor((duration / 1000) % 60),
+        minutes = Math.floor((duration / (1000 * 60)) % 60),
+        hours = Math.floor((duration / (1000 * 60 * 60)) % 24)
+
+      if (hours != 0) {
+        minutes = minutes < 10 ? '0' + minutes : minutes
+      }
+
+        seconds = seconds < 10 ? '0' + seconds : seconds
+
+      if (hours == 0) {
+        return minutes + ":" + seconds
+      }
+
+      return hours + ':' + minutes + ':' + seconds
+    },
+
+    /**
+     * Updates the progress bar.
+     * This probably isn't perfectly accurate, but it does the job.
+     */
+    updateProgress() {
+      if (this.playerData.playing) {
+        this.playerResponse.progress_ms += 25
       }
     },
 

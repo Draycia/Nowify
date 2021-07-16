@@ -43,6 +43,30 @@
     opacity: 0.8;
   }
 
+  &__display {
+    display: flex;
+    align-items: center;
+  }
+
+  &__progress {
+    flex-direction: row;
+    margin-right: 5px;
+  }
+
+  &__progressbar {
+    flex-direction: row;
+    flex-grow: 1;
+  }
+
+  &__duration {
+    flex-direction: row;
+    margin-left: 5px;
+  }
+
+  &__seperator {
+    display: inline;
+  }
+
   &--active {
     align-items: center;
     justify-content: center;
