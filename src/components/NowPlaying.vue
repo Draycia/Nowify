@@ -2,6 +2,7 @@
   <div id="app">
     <div
       v-if="player.playing"
+      v-touch:tap="getAlbumColours"
       v-touch:swipe.left="swipeLeft"
       v-touch:swipe.right="swipeRight"
       v-touch-options="{swipeTolerance: 80, touchHoldTolerance: 300}"
