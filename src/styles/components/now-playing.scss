@@ -14,7 +14,8 @@
   width: 100%;
 
   &__cover,
-  &__details {
+  &__details,
+  &__idle-heading {
     padding: var(--spacing-m);
     text-align: center;
     width: 100%;
@@ -45,26 +46,23 @@
 
   &__display {
     display: flex;
-    align-items: center;
+    flex-direction: row;
   }
 
   &__progress {
-    flex-direction: row;
     margin-right: 5px;
   }
 
   &__progressbar {
-    flex-direction: row;
-    flex-grow: 1;
   }
 
   &__duration {
     flex-direction: row;
-    margin-left: 5px;
   }
 
   &__seperator {
-    display: inline;
+    margin-left: auto;
+    margin-right: auto;
   }
 
   &--active {

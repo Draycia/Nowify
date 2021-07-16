@@ -18,29 +18,40 @@
       <div class="now-playing__details">
         <h1 class="now-playing__track" v-text="player.trackTitle"></h1>
         <h2 class="now-playing__artists" v-text="getTrackArtists"></h2>
+        
+        <b-progress
+          v-if="playerResponse.progress_ms"
+          :style="{
+            'background-color': colourPalette.background,
+            'border-radius': '0',
+            'border-width': '1px',
+            'border-color': colourPalette.text,
+            'border-style': 'solid' 
+          }"
+          class="now-playing__progressbar"
+          height="1rem"
+          :max="playerResponse.item.duration_ms"
+        >
+          <b-progress-bar :value="playerResponse.progress_ms" :style="{ 'background-color': colourPalette.text }"></b-progress-bar>
+        </b-progress>
+
         <div class="now-playing__display">
-          <div class="now-playing__progress" v-text="msToDuration(playerResponse.progress_ms)"></div>
-          <b-progress
-            v-if="playerResponse.progress_ms"
-            :style="{
-              'background-color': colourPalette.background,
-              'border-radius': '0',
-              'border-width': '1px',
-              'border-color': colourPalette.text,
-              'border-style': 'solid' 
-            }"
-            class="now-playing__progressbar"
-            height="1rem"
-            :max="playerResponse.item.duration_ms"
-          >
-            <b-progress-bar :value="playerResponse.progress_ms" :style="{ 'background-color': colourPalette.text }"></b-progress-bar>
-          </b-progress>
-          <div class="now-playing__duration" v-text="msToDuration(playerResponse.item.duration_ms)"></div>
+          <h1 class="now-playing__progress" v-text="msToDuration(playerResponse.progress_ms)"></h1>
+          <h2 class="now-playing__seperator"> - </h2>
+          <h1 class="now-playing__duration" v-text="msToDuration(playerResponse.item.duration_ms)"></h1>
         </div>
       </div>
     </div>
-    <div v-else class="now-playing" :class="getNowPlayingClass()">
-      <h1 class="now-playing__idle-heading">No music is playing 😔</h1>
+    <div v-else
+      class="now-playing"
+      :class="getNowPlayingClass()"
+      v-touch:tap="handleTap"
+    >
+      <h1 class="now-playing__idle-heading">
+        No music is playing 😔
+        <br/>
+        Tap anywhere to resume last played song!
+      </h1>
     </div>
   </div>
 </template>
@@ -190,6 +201,20 @@ export default {
       this.getNowPlaying()
     },
 
+    async handleTap() {
+      await fetch(
+        "https://api.spotify.com/v1/me/player/play",
+        {
+          method: 'PUT',
+          headers: {
+            Authorization: `Bearer ${this.auth.accessToken}`
+          }
+        }
+      )
+
+      this.getNowPlaying()
+    },
+
     /**
      * Get the Now Playing element class.
      * @return {String}
@@ -235,8 +260,6 @@ export default {
       if (!response.ok) {
         throw new Error(`An error has occured: ${response.status}`)
       }
-
-      //window.alert(JSON.stringify((await response.json()).items[0].track.album.images[0].url))
 
       const track = (await response.json()).items[0].track
 
