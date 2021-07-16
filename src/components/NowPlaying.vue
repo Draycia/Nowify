@@ -18,14 +18,23 @@
       <div class="now-playing__details">
         <h1 class="now-playing__track" v-text="player.trackTitle"></h1>
         <h2 class="now-playing__artists" v-text="getTrackArtists"></h2>
-        <!-- <h3 style="clear: both;">
-          <h3 class="now-playing__progress" v-text="msToDuration(playerResponse.progress_ms)"></h3>
-          <h3 class="now-playing__seperator"> - </h3>
-          <h3 class="now-playing__duration" v-text="msToDuration(playerResponse.item.duration_ms)"></h3>
-        </h3> -->
         <div class="now-playing__display">
           <div class="now-playing__progress" v-text="msToDuration(playerResponse.progress_ms)"></div>
-          <b-progress v-if="playerResponse.progress_ms" height="1rem" style="border-radius: 0" class="now-playing__progressbar" :variant="bars[0].variant" :value="playerResponse.progress_ms" :max="playerResponse.item.duration_ms"></b-progress>
+          <b-progress
+            v-if="playerResponse.progress_ms"
+            :style="{
+              'background-color': colourPalette.background,
+              'border-radius': '0',
+              'border-width': '1px',
+              'border-color': colourPalette.text,
+              'border-style': 'solid' 
+            }"
+            class="now-playing__progressbar"
+            height="1rem"
+            :max="playerResponse.item.duration_ms"
+          >
+            <b-progress-bar :value="playerResponse.progress_ms" :style="{ 'background-color': colourPalette.text }"></b-progress-bar>
+          </b-progress>
           <div class="now-playing__duration" v-text="msToDuration(playerResponse.item.duration_ms)"></div>
         </div>
       </div>
@@ -53,13 +62,7 @@ export default {
   data() {
     return {
       bars: [
-        { variant: 'success', value: 75 },
-        { variant: 'info', value: 75 },
-        { variant: 'warning', value: 75 },
-        { variant: 'danger', value: 75 },
-        { variant: 'primary', value: 75 },
-        { variant: 'secondary', value: 75 },
-        { variant: 'dark', value: 75 }
+        { variant: 'success', value: 75 }
       ],
       pollPlaying: '',
       playerResponse: {},
@@ -156,6 +159,17 @@ export default {
           headers: {
             Authorization: `Bearer ${this.auth.accessToken}`
           }
+        }
+      )
+
+      await fetch(
+        "https://guc-spclient.spotify.com/canvaz-cache/v0/canvases",
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${this.auth.accessToken}`
+          },
+          body: this.playerResponse.id
         }
       )
 
